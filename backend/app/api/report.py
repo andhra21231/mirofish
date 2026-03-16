@@ -40,28 +40,15 @@ def _get_generate_task_by_report_id(report_id: str) -> dict:
 
 
 def _build_status_data_from_report(report) -> dict:
-    """Fallback status payload for completed/failed reports without an in-memory task."""
+    """Fallback status payload for reports without an in-memory task."""
     status = report.status.value
     return {
-        "task_id": None,
-        "task_type": "report_generate",
+        "simulation_id": report.simulation_id,
+        "report_id": report.report_id,
         "status": status,
-        "created_at": report.created_at,
-        "updated_at": report.completed_at or report.created_at,
         "progress": 100 if report.status == ReportStatus.COMPLETED else 0,
         "message": "Report already generated" if report.status == ReportStatus.COMPLETED else (report.error or "Report status available"),
-        "progress_detail": {},
-        "result": {
-            "report_id": report.report_id,
-            "simulation_id": report.simulation_id,
-            "status": status
-        } if report.status == ReportStatus.COMPLETED else None,
-        "error": report.error,
-        "metadata": {
-            "simulation_id": report.simulation_id,
-            "graph_id": report.graph_id,
-            "report_id": report.report_id
-        }
+        "already_completed": report.status == ReportStatus.COMPLETED
     }
 
 @report_bp.route('/generate', methods=['POST'])
