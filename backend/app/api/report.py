@@ -21,6 +21,49 @@ logger = get_logger('mirofish.api.report')
 
 # ============== Report Generation API ==============
 
+def _normalize_task_status_data(task_data: dict) -> dict:
+    """Ensure task status payload has a numeric progress field."""
+    normalized = dict(task_data)
+    if normalized.get("progress") is None:
+        normalized["progress"] = 0
+    return normalized
+
+
+def _get_generate_task_by_report_id(report_id: str) -> dict:
+    """Resolve a report generation task from the pre-generated report_id."""
+    task_manager = TaskManager()
+    for task_data in task_manager.list_tasks(task_type="report_generate"):
+        metadata = task_data.get("metadata") or {}
+        if metadata.get("report_id") == report_id:
+            return _normalize_task_status_data(task_data)
+    return None
+
+
+def _build_status_data_from_report(report) -> dict:
+    """Fallback status payload for completed/failed reports without an in-memory task."""
+    status = report.status.value
+    return {
+        "task_id": None,
+        "task_type": "report_generate",
+        "status": status,
+        "created_at": report.created_at,
+        "updated_at": report.completed_at or report.created_at,
+        "progress": 100 if report.status == ReportStatus.COMPLETED else 0,
+        "message": "Report already generated" if report.status == ReportStatus.COMPLETED else (report.error or "Report status available"),
+        "progress_detail": {},
+        "result": {
+            "report_id": report.report_id,
+            "simulation_id": report.simulation_id,
+            "status": status
+        } if report.status == ReportStatus.COMPLETED else None,
+        "error": report.error,
+        "metadata": {
+            "simulation_id": report.simulation_id,
+            "graph_id": report.graph_id,
+            "report_id": report.report_id
+        }
+    }
+
 @report_bp.route('/generate', methods=['POST'])
 def generate_report():
     """
@@ -195,12 +238,15 @@ def generate_report():
         }), 500
 
 
-@report_bp.route('/generate/status', methods=['POST'])
+@report_bp.route('/generate/status', methods=['GET', 'POST'])
 def get_generate_status():
     """
     Query report generation task progress
 
-    Request (JSON):
+    GET query:
+        ?report_id=report_xxxx
+
+    POST request (JSON):
         {
             "task_id": "task_xxxx",         // Optional, task_id from generate
             "simulation_id": "sim_xxxx"     // Optional, simulation ID
@@ -218,6 +264,33 @@ def get_generate_status():
         }
     """
     try:
+        if request.method == 'GET':
+            report_id = request.args.get('report_id')
+            if not report_id:
+                return jsonify({
+                    "success": False,
+                    "error": "Please provide report_id"
+                }), 400
+
+            task_data = _get_generate_task_by_report_id(report_id)
+            if task_data:
+                return jsonify({
+                    "success": True,
+                    "data": task_data
+                })
+
+            report = ReportManager.get_report(report_id)
+            if not report:
+                return jsonify({
+                    "success": False,
+                    "error": f"Report not found: {report_id}"
+                }), 404
+
+            return jsonify({
+                "success": True,
+                "data": _build_status_data_from_report(report)
+            })
+
         data = request.get_json() or {}
         
         task_id = data.get('task_id')
@@ -256,7 +329,7 @@ def get_generate_status():
         
         return jsonify({
             "success": True,
-            "data": task.to_dict()
+            "data": _normalize_task_status_data(task.to_dict())
         })
         
     except Exception as e:
