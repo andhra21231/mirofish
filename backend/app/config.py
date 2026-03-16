@@ -4,6 +4,7 @@ Loads configuration from the project root .env file
 """
 
 import os
+import secrets
 from dotenv import load_dotenv
 
 # Load the .env file from project root
@@ -15,6 +16,20 @@ if os.path.exists(project_root_env):
 else:
     # If no .env in root, try loading environment variables (for production)
     load_dotenv(override=True)
+
+
+def _get_bool_env(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _get_cors_origins():
+    raw = os.environ.get('CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
+    if raw.strip() == '*':
+        return '*'
+    return [origin.strip() for origin in raw.split(',') if origin.strip()]
 
 
 class Config:

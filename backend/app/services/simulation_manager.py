@@ -478,17 +478,38 @@ class SimulationManager:
         return simulations
     
     def get_profiles(self, simulation_id: str, platform: str = "reddit") -> List[Dict[str, Any]]:
-        """Get simulation's Agent Profiles"""
+        """Get simulation Agent profiles in a normalized JSON shape."""
+        import csv
+
         state = self._load_simulation_state(simulation_id)
         if not state:
             raise ValueError(f"Simulation does not exist: {simulation_id}")
-        
+
         sim_dir = self._get_simulation_dir(simulation_id)
-        profile_path = os.path.join(sim_dir, f"{platform}_profiles.json")
-        
+
+        if platform == "twitter":
+            profile_path = os.path.join(sim_dir, "twitter_profiles.csv")
+            if not os.path.exists(profile_path):
+                return []
+
+            with open(profile_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                profiles = []
+                for row in reader:
+                    profiles.append({
+                        "name": row.get("name", ""),
+                        "realname": row.get("name", ""),
+                        "username": row.get("username", row.get("name", "")),
+                        "bio": row.get("description", ""),
+                        "persona": row.get("user_char", ""),
+                        "profession": row.get("profession", "Unknown profession"),
+                    })
+                return profiles
+
+        profile_path = os.path.join(sim_dir, "reddit_profiles.json")
         if not os.path.exists(profile_path):
             return []
-        
+
         with open(profile_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     
