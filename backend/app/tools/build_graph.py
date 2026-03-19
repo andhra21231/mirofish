@@ -9,7 +9,6 @@ from ..core.task_manager import TaskManager, TaskStatus
 from ..models.project import ProjectStatus
 from ..resources.documents import DocumentStore
 from ..resources.projects import ProjectStore
-from ..services.graph_builder import GraphBuilderService
 from ..services.text_processor import TextProcessor
 from ..utils.logger import get_logger
 
@@ -88,6 +87,8 @@ class BuildGraphTool:
         self.project_store.save(project)
 
         def run_build():
+            from ..services.graph_builder import GraphBuilderService
+
             build_logger = get_logger("mirofish.build")
             try:
                 build_logger.info(f"[{task_id}] Starting graph build...")

@@ -11,14 +11,12 @@ from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass
 
 from ..config import Config
-from ..models.task import TaskManager, TaskStatus
 from .text_processor import TextProcessor
 from .graph_db import GraphDatabase, GraphNode
 from .entity_extractor import EntityExtractor
 from ..utils.logger import get_logger
 
 logger = get_logger('mirofish.graph_builder')
-
 
 @dataclass
 class GraphInfo:
@@ -44,6 +42,8 @@ class GraphBuilderService:
     """
 
     def __init__(self, api_key: Optional[str] = None):
+        from ..models.task import TaskManager
+
         # api_key parameter kept for backward compatibility from earlier graph backends
         self.db = GraphDatabase()
         self.extractor = EntityExtractor()
@@ -100,6 +100,7 @@ class GraphBuilderService:
         chunk_overlap: int,
         batch_size: int
     ):
+        from ..models.task import TaskStatus
         """Graph build worker thread"""
         try:
             self.task_manager.update_task(

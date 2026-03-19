@@ -5,7 +5,19 @@ Loads configuration from the project root .env file
 
 import os
 from dotenv import load_dotenv
+import secrets
 
+def _get_bool_env(key, default=False):
+    value = os.getenv(key, str(default))
+    return value.lower() in ['true', '1', 't', 'yes']
+
+def _get_cors_origins():
+    origins = os.getenv("CORS_ORIGINS", "*")
+
+    if origins == "*":
+        return "*"
+
+    return [origin.strip() for origin in origins.split(",")]
 # Load the .env file from project root
 # Path: MiroFish/.env (relative to backend/app/config.py)
 project_root_env = os.path.join(os.path.dirname(__file__), '../../.env')
